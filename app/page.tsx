@@ -3,6 +3,7 @@
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { useTheme } from "next-themes";
 import Image from "next/image";
 import { useEffect, useMemo, useState } from "react";
 import { AxisOptions, Chart } from "react-charts";
@@ -23,6 +24,7 @@ export default function Home() {
   const [greenPixels, setGreenPixels] = useState<number[]>([]);
   const [bluePixels, setBluePixels] = useState<number[]>([]);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState<boolean>(true);
+  const { theme } = useTheme();
 
   function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -149,16 +151,19 @@ export default function Home() {
         {image && isBlackAndWhite && redPixels.length > 0 && (
           <Chart
             options={{
+              dark: theme === "dark",
               data: [createDataSeries(redPixels, "Gray")],
               primaryAxis,
               secondaryAxes,
               defaultColors: ["gray"],
             }}
+            className=""
           />
         )}
         {image && !isBlackAndWhite && (
           <Chart
             options={{
+              dark: theme === "dark",
               data: [
                 createDataSeries(redPixels, "Red"),
                 createDataSeries(greenPixels, "Green"),
