@@ -1,22 +1,11 @@
 "use client";
 
+import { Histogram } from "@/components/histogram";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { useTheme } from "next-themes";
 import Image from "next/image";
-import { useEffect, useMemo, useState } from "react";
-import { AxisOptions, Chart } from "react-charts";
-
-type ValuePixels = {
-  value: number;
-  pixels: number;
-};
-
-type Series = {
-  label: string;
-  data: ValuePixels[];
-};
+import { useEffect, useState } from "react";
 
 export default function Home() {
   const [image, setImage] = useState<string | null>(null);
@@ -24,56 +13,34 @@ export default function Home() {
   const [greenPixels, setGreenPixels] = useState<number[]>([]);
   const [bluePixels, setBluePixels] = useState<number[]>([]);
   const [isBlackAndWhite, setIsBlackAndWhite] = useState<boolean>(true);
-  const { theme } = useTheme();
 
   function handleImageChange(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
-
-    if (!file) {
-      return;
-    }
+    if (!file) return;
 
     const reader = new FileReader();
 
     reader.onloadend = () => {
-      if (typeof reader.result !== "string") {
-        return;
-      }
-
+      if (typeof reader.result !== "string") return;
       setImage(reader.result as string);
     };
 
     reader.readAsDataURL(file);
   }
 
-  const createDataSeries = (pixels: number[], label: string): Series => ({
-    label,
-    data: pixels.map((value, index) => ({
-      value: index,
-      pixels: value,
-    })),
-  });
-
-  const primaryAxis = useMemo(
-    (): AxisOptions<ValuePixels> => ({
-      getValue: (datum) => datum.value,
-    }),
-    []
-  );
-
-  const secondaryAxes = useMemo(
-    (): AxisOptions<ValuePixels>[] => [
-      {
-        getValue: (datum) => datum.pixels,
-      },
-    ],
-    []
-  );
-
   useEffect(() => {
-    if (!image) {
-      return;
+    function isImageBlackAndWhite(
+      redAmounts: number[],
+      greenAmounts: number[],
+      blueAmounts: number[]
+    ): boolean {
+      return (
+        redAmounts.every((value, index) => value === greenAmounts[index]) &&
+        redAmounts.every((value, index) => value === blueAmounts[index])
+      );
     }
+
+    if (!image) return;
 
     const img = new window.Image();
     img.src = image;
@@ -93,28 +60,25 @@ export default function Home() {
 
       const imageData = context.getImageData(0, 0, img.width, img.height).data;
 
-      const redAmounts = Array.from({ length: 256 }, () => 0);
-      const greenAmounts = Array.from({ length: 256 }, () => 0);
-      const blueAmounts = Array.from({ length: 256 }, () => 0);
+      const reds = Array.from({ length: 256 }, () => 0);
+      const greens = Array.from({ length: 256 }, () => 0);
+      const blues = Array.from({ length: 256 }, () => 0);
 
       for (let i = 0; i < imageData.length; i += 4) {
         const r = imageData[i];
         const g = imageData[i + 1];
         const b = imageData[i + 2];
 
-        redAmounts[r] += 1;
-        greenAmounts[g] += 1;
-        blueAmounts[b] += 1;
+        reds[r] += 1;
+        greens[g] += 1;
+        blues[b] += 1;
       }
 
-      setRedPixels(redAmounts);
-      setGreenPixels(greenAmounts);
-      setBluePixels(blueAmounts);
+      setRedPixels(reds);
+      setGreenPixels(greens);
+      setBluePixels(blues);
 
-      if (
-        redAmounts.every((value, index) => value === greenAmounts[index]) &&
-        redAmounts.every((value, index) => value === blueAmounts[index])
-      ) {
+      if (isImageBlackAndWhite(reds, greens, blues)) {
         setIsBlackAndWhite(true);
       } else {
         setIsBlackAndWhite(false);
@@ -126,6 +90,7 @@ export default function Home() {
     <main className="flex h-screen flex-col items-center p-16">
       <div className="flex flex-col items-center space-y-4">
         <Input type="file" onChange={handleImageChange} />
+
         <div className="flex items-center space-x-2">
           <Checkbox
             id="terms"
@@ -137,6 +102,7 @@ export default function Home() {
           />
           <Label htmlFor="terms">Black and white</Label>
         </div>
+
         {image && (
           <Image
             src={image}
@@ -147,35 +113,13 @@ export default function Home() {
           />
         )}
       </div>
-      <div className="w-full h-72">
-        {image && isBlackAndWhite && redPixels.length > 0 && (
-          <Chart
-            options={{
-              dark: theme === "dark",
-              data: [createDataSeries(redPixels, "Gray")],
-              primaryAxis,
-              secondaryAxes,
-              defaultColors: ["gray"],
-            }}
-            className=""
-          />
-        )}
-        {image && !isBlackAndWhite && (
-          <Chart
-            options={{
-              dark: theme === "dark",
-              data: [
-                createDataSeries(redPixels, "Red"),
-                createDataSeries(greenPixels, "Green"),
-                createDataSeries(bluePixels, "Blue"),
-              ],
-              primaryAxis,
-              secondaryAxes,
-              defaultColors: ["red", "green", "blue"],
-            }}
-          />
-        )}
-      </div>
+
+      <Histogram
+        redPixels={redPixels}
+        greenPixels={greenPixels}
+        bluePixels={bluePixels}
+        isBlackAndWhite={isBlackAndWhite}
+      />
     </main>
   );
 }
